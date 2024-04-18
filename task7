@@ -1,0 +1,249 @@
+#define _CRT_SECURE_NO_WARNINGS
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+typedef struct Nod Nod;
+typedef struct HashTable HashTable;
+typedef struct Cladire Cladire;
+struct Cladire {
+	int id;
+	int anConstructie;
+	char* zona;
+
+};
+struct Nod {
+	Nod* urm;
+	Cladire cladire;
+};
+struct HashTable {
+	Nod** vector;
+	int dim;
+};
+Cladire initializareCladire(char* zona, int an, int id) {
+	Cladire c;
+	c.anConstructie = an;
+	c.id = id;
+	c.zona = (char*)malloc(sizeof(zona) + 1);
+	strcpy(c.zona, zona);
+	return c;
+}
+HashTable initializareTablela(int dim) {
+	HashTable h;
+	h.dim = dim;
+	h.vector = (Nod**)malloc(sizeof(Nod*) * dim);
+	for (int i = 0; i < dim; i++)
+	{
+		h.vector[i] = NULL;
+	}
+	return h;
+}
+int calculHash(int an_construire, int dimensiune) {
+	return an_construire % dimensiune;
+}
+void inserareSf(Nod** lista,Cladire c) {
+	Nod* node = (Nod*)malloc(sizeof(Nod));
+	node->cladire = initializareCladire(c.zona,c.anConstructie,c.id);
+	node->urm = NULL;
+	if ((*lista) != NULL) {
+		Nod* cur = (*lista);
+		while (cur->urm != NULL) {
+			cur = cur->urm;
+		}
+		cur->urm = node;
+	}
+	else {
+		(*lista) = node;
+	}
+	
+}
+void inserareCladire( HashTable h, Cladire c) {
+	if (h.dim > 0) {
+		int poz = calculHash(c.anConstructie, h.dim);
+		inserareSf(&h.vector[poz], c);
+	}
+}
+void afisGalerie(Cladire g) {
+	printf("%d Cladirea din %s din anul %d\n", g.id, g.zona, g.anConstructie);
+
+}
+void afisareListaGalerii(Nod* lista) {
+	while (lista) {
+		afisGalerie(lista->cladire);
+		lista = lista->urm;
+	}
+}
+void afisareHashTable(HashTable h) {
+	for (int i = 0; i < h.dim; i++) {
+		if (h.vector[i] != NULL) {
+			printf("Clusterul %d :\n", i);
+			afisareListaGalerii(h.vector[i]);
+		}
+	}
+}
+//Implementa?i o func?ie care s? sorteze cl?dirile dintr-un cluster al tabelei de dispersie 
+// în func?ie de un anumit criteriu, cum ar fi ID-ul 
+
+void sortareCladireDupaId(HashTable tabela, int an) {
+	int poz = calculHash(an, tabela.dim);
+	Nod* curent = tabela.vector[poz];
+	for (Nod* i = curent; i; i = i->urm)
+		for (Nod* j = i->urm; j; j = j->urm)
+		{
+			if (i->cladire.id > j->cladire.id) {
+				Cladire temp = i->cladire;
+				i->cladire = j->cladire;
+				j->cladire = temp;
+			}
+		}
+
+}
+
+Cladire* cladiriDinCluster(int an, HashTable h, int*dim) {
+	int poz = calculHash(an, h.dim);
+	Nod* curent = h.vector[poz];
+	int i=0;
+	while (curent!= NULL) {
+		i++;
+		curent=curent->urm;
+	}
+	Cladire* cladiri = (Cladire*)malloc(sizeof(Cladire) * i);
+
+	*dim = i;
+	Nod* cur = h.vector[poz];
+	int j = 0;
+	while (cur != NULL) {
+		cladiri[j] = initializareCladire(cur->cladire.zona, cur->cladire.anConstructie, cur->cladire.id);
+		cur = cur->urm;
+		j++;
+	}
+	return cladiri;
+}
+//Implementa?i o func?ie care s? permit? c?utarea unei cl?diri în tabela de dispersie pe baza ID-ului. 
+Cladire gasireCladireId(HashTable tabela, int id) {
+	int k = 0;
+	for (int i = 0; i < tabela.dim && k==0; i++) {
+		Nod* curent = tabela.vector[i];
+		while (curent && curent->cladire.id != id) {
+			curent = curent->urm;
+		}
+		if (curent) {
+			k = 1;
+			return curent->cladire;
+		}
+	}
+}
+
+//sterge o cladire pentru care se primeste id-ul si anul construirii. 
+
+void stergeCladire(HashTable tabela, int id, int an) {
+	int poz = calculHash(an, tabela.dim);
+	Nod* curent = tabela.vector[poz];
+	Nod* anterior = NULL;
+	while (curent->urm!=NULL && curent->cladire.id != id) {
+		anterior = curent;
+		curent = curent->urm;
+	}
+	if (curent) {
+		if (anterior) {
+			anterior->urm = curent->urm;
+		}
+		else {
+			//daca il sterg pe primul
+			tabela.vector[poz] = curent->urm;
+		}
+	}
+	free(curent->cladire.zona);
+	free(curent);
+
+}
+
+
+//sterge o cladire pentru care se primeste doar id-ul cladirii. 
+
+void stergereCladireDoarid(HashTable tabela, int id) {
+	int k = 0;
+	for (int i = 0; i < tabela.dim && k==0; i++) {
+		
+		Nod* curent = tabela.vector[i];
+		Nod* anterior = NULL;
+		while (curent && curent->cladire.id != id) {
+			anterior = curent;
+			curent = curent->urm;
+		}
+		if (curent) {
+			k =1;
+			if (anterior) {
+				anterior->urm = curent->urm;
+			}
+			else {
+				tabela.vector[i] = curent->urm;
+			}
+		}
+	}
+}
+
+
+/// Implementati o functie care modifica anul construirii unei cladiri identificate prin ID. 
+/// Functia primeste ca parametri:
+///  id-ul cladirii, vechiul an de constructie si noul an de constructie.
+///  Aveti grija se modifica valoarea atributului folosit pentru clusterizare.
+
+void modificareAn(HashTable tabela, int id, int anVechi, int anNou) {
+	int poz = calculHash(anVechi, tabela.dim);
+	int pozNou = calculHash(anNou, tabela.dim);
+
+	Nod* curent = tabela.vector[poz];
+	Nod* anterior = NULL;
+	while (curent && curent->cladire.id != id) {
+		anterior = curent;
+		curent = curent->urm;
+	}
+	if (curent) {
+		curent->cladire.anConstructie = anNou;
+		if (poz != pozNou) {
+			//il sterg
+			if (anterior) {
+				anterior->urm = curent->urm;
+			}
+			else {
+				//daca e primul daca anterior==NULL
+				tabela.vector[poz] = curent->urm;
+			}
+
+			curent->urm = tabela.vector[pozNou];
+			tabela.vector[pozNou] = curent;
+		}
+	}
+	
+	
+}
+
+
+int main() {
+	HashTable tabela = initializareTablela(5);
+	Cladire c1 = initializareCladire("Pipera", 1993, 8); //rest 3
+	Cladire c2= initializareCladire("Zona A", 1993, 1);
+	Cladire c3 = initializareCladire("Zona B", 2009, 2);//rest4
+	Cladire c4 = initializareCladire("Zona C", 1987, 3);//rest2
+	Cladire c5 = initializareCladire("Zona D", 1987, 4);
+	inserareCladire(tabela, c4);
+	inserareCladire(tabela, c1);
+	inserareCladire(tabela, c5);
+	inserareCladire(tabela, c2);
+	inserareCladire(tabela, c3);
+	int dim = 0;
+	Cladire* cladiri = cladiriDinCluster(1987, tabela,&dim);
+	/*for (int i = 0; i < dim; i++) {
+		afisGalerie(cladiri[i]);
+	}
+	*/
+	//stergeCladire(tabela, 3, 1987);
+	//stergereCladireDoarid(tabela, 1);
+	modificareAn(tabela, 3, 1987, 1993);
+	sortareCladireDupaId(tabela, 1993);
+	//printf("--------------------------------------------- ");
+	Cladire cladire1 = gasireCladireId(tabela, 3);
+	afisGalerie(cladire1);
+	afisareHashTable(tabela);
+
+}
